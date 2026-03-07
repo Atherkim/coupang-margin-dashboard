@@ -92,4 +92,36 @@ if uploaded_file is not None:
         # 👉 [수정 5] 혼동 방지를 위해 ROAS 명칭 변경 (손익분기 ROAS)
         def calc_roas(row):
             if row['마진액'] > 0:
-                return
+                return f"{(row['판매가'] / row['마진액'] * 100):.0f}%"
+            else:
+                return "🔴 적자 (광고불가)"
+        
+        edited_df['손익분기(BEP) ROAS'] = edited_df.apply(calc_roas, axis=1)
+        
+        def eval_margin(margin):
+            if margin >= 30: return "🟢 좋음"
+            elif margin >= 15: return "🟡 보통"
+            else: return "🔴 나쁨"
+            
+        edited_df['마진 판단'] = edited_df['마진율(%)'].apply(eval_margin)
+        
+        st.divider()
+        st.subheader("📊 최종 분석 리포트")
+        
+        result_df = edited_df[['등록상품명', '월 누적보관료', '판매가', '매입원가', '실제 부대비용', '총 비용', '마진액', '마진율(%)', '손익분기(BEP) ROAS', '마진 판단']].copy()
+        
+        money_cols = ['월 누적보관료', '판매가', '매입원가', '실제 부대비용', '총 비용', '마진액']
+        for col in money_cols:
+            result_df[col] = result_df[col].apply(lambda x: f"{int(x):,} 원")
+        
+        st.dataframe(result_df, use_container_width=True, hide_index=True)
+
+    # 👉 [수정 7] 예외 처리 세분화
+    except KeyError as e:
+        st.error(f"데이터 필수 항목 오류: {e}")
+    except ValueError as e:
+        st.error(f"데이터 계산 오류 (숫자가 아닌 값이 포함되어 있을 수 있습니다): {e}")
+    except Exception as e:
+        st.error(f"알 수 없는 오류가 발생했습니다. 관리자에게 문의하거나 파일 양식을 확인해 주세요: {e}")
+else:
+    st.info("👈 왼쪽 사이드바에서 쿠팡 재고 건전성 리포트(CSV)를 업로드해 주세요.")
